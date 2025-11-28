@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sentinel Honeypot{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Security Dashboard</h2>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h3>Honeypot Control</h3>
+        <div class="controls">
+            <button id="startBtn" class="btn btn-success">Start Honeypot</button>
+            <button id="stopBtn" class="btn btn-danger">Stop Honeypot</button>
+            <span id="status" class="status-badge">Stopped</span>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+                <h4>Total Attacks</h4>
+                <p class="stat-value" id="totalAttacks">0</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🌐</div>
+            <div class="stat-info">
+                <h4>Unique IPs</h4>
+                <p class="stat-value" id="uniqueIps">0</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔍</div>
+            <div class="stat-info">
+                <h4>Port Scans</h4>
+                <p class="stat-value" id="portScans">0</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+                <h4>Connections</h4>
+                <p class="stat-value" id="connections">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attacks -->
+    <div class="recent-attacks">
+        <h3>Recent Attack Activity</h3>
+        <div class="table-container">
+            <table id="attacksTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Source IP</th>
+                        <th>Target Port</th>
+                        <th>Service</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="attacksBody">
+                    <tr>
+                        <td colspan="5" class="no-data">No attacks detected yet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Attack Chart -->
+    <div class="chart-container">
+        <h3>Attack Timeline</h3>
+        <canvas id="attackChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

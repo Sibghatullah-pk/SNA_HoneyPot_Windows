@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Live Monitor - Sentinel Honeypot{% endblock %}
+
+{% block content %}
+<div class="live-monitor">
+    <h2>Live Attack Monitor</h2>
+    
+    <div class="status-bar">
+        <span class="status-indicator">
+            <span class="pulse" id="liveIndicator"></span>
+            Live Monitoring
+        </span>
+        <span id="connectionStatus">Connecting...</span>
+    </div>
+
+    <div class="live-feed">
+        <h3>Real-time Attack Feed</h3>
+        <div id="liveFeed" class="feed-container">
+            <div class="feed-item info">
+                <span class="timestamp">System Ready</span>
+                <span class="message">Waiting for attacks...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="attack-map">
+        <h3>Attack Source Distribution</h3>
+        <div id="attackMap" class="map-container">
+            <canvas id="sourceChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const socket = io();
+let attackCount = 0;
+
+socket.on('connect', function() {
+    document.getElementById('connectionStatus').textContent = 'Connected';
+    document.getElementById('connectionStatus').className = 'connected';
+    document.getElementById('liveIndicator').className = 'pulse active';
+});
+
+socket.on('disconnect', function() {
+    document.getElementById('connectionStatus').textContent = 'Disconnected';
+    document.getElementById('connectionStatus').className = 'disconnected';
+    document.getElementById('liveIndicator').className = 'pulse';
+});
+
+socket.on('new_attack', function(data) {
+    attackCount++;
+    addLiveFeedItem(data);
+    updateSourceChart(data);
+});
+
+function addLiveFeedItem(attack) {
+    const feed = document.getElementById('liveFeed');
+    const item = document.createElement('div');
+    item.className = 'feed-item alert';
+    
+    const timestamp = new Date().toLocaleTimeString();
+    item.innerHTML = `
+        <span class="timestamp">${timestamp}</span>
+        <span class="source">${attack.source_ip}:${attack.source_port || 'N/A'}</span>
+        <span class="arrow">→</span>
+        <span class="target">Port ${attack.target_port}</span>
+        <span class="service">${attack.service || 'Unknown'}</span>
+        <span class="badge">${attack.type}</span>
+    `;
+    
+    feed.insertBefore(item, feed.firstChild);
+    
+    // Keep only last 50 items
+    while (feed.children.length > 50) {
+        feed.removeChild(feed.lastChild);
+    }
+}
+
+// Source chart
+const sourceCtx = document.getElementById('sourceChart').getContext('2d');
+const sourceChart = new Chart(sourceCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [],
+        datasets: [{
+            data: [],
+            backgroundColor: [
+                '#ff6384',
+                '#36a2eb',
+                '#ffce56',
+                '#4bc0c0',
+                '#9966ff',
+                '#ff9f40'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    color: '#e0e0e0'
+                }
+            }
+        }
+    }
+});
+
+const sourceData = {};
+
+function updateSourceChart(attack) {
+    const ip = attack.source_ip;
+    sourceData[ip] = (sourceData[ip] || 0) + 1;
+    
+    const labels = Object.keys(sourceData);
+    const data = Object.values(sourceData);
+    
+    sourceChart.data.labels = labels;
+    sourceChart.data.datasets[0].data = data;
+    sourceChart.update();
+}
+</script>
+{% endblock %}
