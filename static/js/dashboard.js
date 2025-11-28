@@ -13,9 +13,12 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeChart();
     setupEventListeners();
     loadStats();
+    loadAttackInfo();
 
-    // Refresh stats every 5 seconds
-    setInterval(loadStats, 5000);
+    // Refresh stats every 3 seconds
+    setInterval(loadStats, 3000);
+    // Refresh attack info every 10 seconds
+    setInterval(loadAttackInfo, 10000);
 });
 
 // Event Listeners
@@ -23,15 +26,107 @@ function setupEventListeners() {
     document.getElementById('startBtn').addEventListener('click', startHoneypot);
     document.getElementById('stopBtn').addEventListener('click', stopHoneypot);
 
+    // Clear stats button
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearStats);
+    }
+
     socket.on('connect', function () {
         console.log('Connected to server');
+        document.getElementById('status').style.background = '#00c851';
+    });
+
+    socket.on('disconnect', function () {
+        console.log('Disconnected from server');
     });
 
     socket.on('new_attack', function (data) {
+        console.log('New attack received:', data);
         addAttackToTable(data);
         updateStats();
         updateChart();
+        // Show notification
+        showAttackNotification(data);
     });
+}
+
+// Load Attack Info for Team
+function loadAttackInfo() {
+    fetch('/api/attack_info')
+        .then(response => response.json())
+        .then(data => {
+            const targetIPElement = document.getElementById('targetIP');
+            if (targetIPElement && data.target_ips) {
+                targetIPElement.textContent = data.target_ips.join(' or ');
+            }
+            // Update status
+            if (data.honeypot_status === 'running') {
+                document.getElementById('status').textContent = 'Running';
+                document.getElementById('status').style.background = '#00c851';
+            }
+        })
+        .catch(error => console.error('Error loading attack info:', error));
+}
+
+// Show attack notification
+function showAttackNotification(attack) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'attack-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4);
+        z-index: 9999;
+        animation: slideIn 0.3s ease-out;
+        max-width: 350px;
+    `;
+    notification.innerHTML = `
+        <strong>🚨 Attack Detected!</strong><br>
+        <small>From: ${attack.source_ip}:${attack.source_port || 'N/A'}<br>
+        Port: ${attack.target_port} (${attack.service || 'Unknown'})<br>
+        Type: ${attack.type || 'connection_attempt'}</small>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// Clear Stats
+function clearStats() {
+    if (!confirm('Clear all attack statistics?')) return;
+
+    fetch('/api/clear_stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Reset UI
+                document.getElementById('totalAttacks').textContent = '0';
+                document.getElementById('uniqueIps').textContent = '0';
+                document.getElementById('portScans').textContent = '0';
+                document.getElementById('connections').textContent = '0';
+                document.getElementById('attacksBody').innerHTML = '<tr><td colspan="5" class="no-data">No attacks detected yet</td></tr>';
+                chartData.labels = [];
+                chartData.data = [];
+                attackChart.update();
+                alert('Statistics cleared!');
+            }
+        })
+        .catch(error => alert('Error clearing stats: ' + error));
 }
 
 // Start Honeypot

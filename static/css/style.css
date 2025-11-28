@@ -448,6 +448,81 @@ footer {
     width: 8px;
 }
 
+/* Attack Notification Animations */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Severity Colors */
+.severity-high {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%) !important;
+}
+
+.severity-medium {
+    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%) !important;
+}
+
+.severity-low {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+}
+
+/* Badge colors for attack types */
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.badge.sql_injection {
+    background: #ff4444;
+    color: white;
+}
+
+.badge.brute_force {
+    background: #ff9800;
+    color: white;
+}
+
+.badge.web_scan {
+    background: #2196f3;
+    color: white;
+}
+
+.badge.connection_attempt {
+    background: #00bcd4;
+    color: white;
+}
+
+/* Button warning style */
+.btn-warning {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #f57c00;
+}
+
 ::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.3);
 }

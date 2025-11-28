@@ -6,6 +6,12 @@
 <div class="analytics">
     <h2>Security Analytics</h2>
     
+    <!-- Export Buttons -->
+    <div style="margin-bottom: 20px;">
+        <a href="/api/export/json" class="btn btn-primary" style="margin-right: 10px;">Export JSON</a>
+        <a href="/api/export/csv" class="btn btn-success">Export CSV</a>
+    </div>
+    
     <div class="analytics-grid">
         <div class="chart-box">
             <h3>Attacks by Port</h3>
@@ -18,8 +24,8 @@
         </div>
         
         <div class="chart-box">
-            <h3>Hourly Attack Pattern</h3>
-            <canvas id="timeChart"></canvas>
+            <h3>Severity Distribution</h3>
+            <canvas id="severityChart"></canvas>
         </div>
         
         <div class="chart-box">
@@ -33,11 +39,11 @@
     <div class="network-scanner">
         <h3>Network Scanner</h3>
         <div class="scanner-controls">
-            <input type="text" id="scanTarget" placeholder="Enter IP or network (e.g., 192.168.1.0/24)" value="127.0.0.1">
-            <button id="scanBtn" class="btn btn-primary">Scan Network</button>
+            <input type="text" id="scanTarget" placeholder="Enter IP (e.g., 192.168.1.1)" value="127.0.0.1">
+            <button id="scanBtn" class="btn btn-primary">Scan</button>
         </div>
         <div id="scanResults" class="results-container">
-            <p>Enter a target and click Scan to begin</p>
+            <p>Enter a target and click Scan</p>
         </div>
     </div>
 </div>
@@ -50,92 +56,110 @@ const portCtx = document.getElementById('portChart').getContext('2d');
 const portChart = new Chart(portCtx, {
     type: 'bar',
     data: {
-        labels: ['22', '23', '80', '443', '3306', '8080'],
+        labels: [],
         datasets: [{
             label: 'Attacks',
-            data: [0, 0, 0, 0, 0, 0],
-            backgroundColor: '#36a2eb'
+            data: [],
+            backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40', '#c9cbcf']
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-            y: {
-                beginAtZero: true,
-                ticks: { color: '#e0e0e0' }
-            },
-            x: {
-                ticks: { color: '#e0e0e0' }
-            }
+            y: { beginAtZero: true, ticks: { color: '#e0e0e0' } },
+            x: { ticks: { color: '#e0e0e0' } }
         },
-        plugins: {
-            legend: { labels: { color: '#e0e0e0' } }
-        }
+        plugins: { legend: { labels: { color: '#e0e0e0' } } }
     }
 });
 
 // Type Chart
 const typeCtx = document.getElementById('typeChart').getContext('2d');
 const typeChart = new Chart(typeCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [],
+        datasets: [{
+            data: [],
+            backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { color: '#e0e0e0' } } }
+    }
+});
+
+// Severity Chart
+const severityCtx = document.getElementById('severityChart').getContext('2d');
+const severityChart = new Chart(severityCtx, {
     type: 'pie',
     data: {
-        labels: ['Connection Attempts', 'Port Scans', 'Other'],
+        labels: ['Low', 'Medium', 'High'],
         datasets: [{
             data: [0, 0, 0],
-            backgroundColor: ['#ff6384', '#36a2eb', '#ffce56']
+            backgroundColor: ['#4bc0c0', '#ffce56', '#ff6384']
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: { color: '#e0e0e0' }
-            }
-        }
+        plugins: { legend: { position: 'bottom', labels: { color: '#e0e0e0' } } }
     }
 });
 
-// Time Chart
-const timeCtx = document.getElementById('timeChart').getContext('2d');
-const timeChart = new Chart(timeCtx, {
-    type: 'line',
-    data: {
-        labels: Array.from({length: 24}, (_, i) => i + ':00'),
-        datasets: [{
-            label: 'Attacks per Hour',
-            data: new Array(24).fill(0),
-            borderColor: '#4bc0c0',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: { color: '#e0e0e0' }
-            },
-            x: {
-                ticks: { color: '#e0e0e0' }
+// Load and update charts
+function loadAnalytics() {
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => {
+            // Port chart
+            if (data.attacks_by_port && Object.keys(data.attacks_by_port).length > 0) {
+                portChart.data.labels = Object.keys(data.attacks_by_port);
+                portChart.data.datasets[0].data = Object.values(data.attacks_by_port);
+                portChart.update();
             }
-        },
-        plugins: {
-            legend: { labels: { color: '#e0e0e0' } }
-        }
-    }
-});
+            
+            // Type chart
+            if (data.attacks_by_type && Object.keys(data.attacks_by_type).length > 0) {
+                typeChart.data.labels = Object.keys(data.attacks_by_type);
+                typeChart.data.datasets[0].data = Object.values(data.attacks_by_type);
+                typeChart.update();
+            }
+            
+            // Severity chart
+            if (data.attacks_by_severity) {
+                severityChart.data.datasets[0].data = [
+                    data.attacks_by_severity.low || 0,
+                    data.attacks_by_severity.medium || 0,
+                    data.attacks_by_severity.high || 0
+                ];
+                severityChart.update();
+            }
+            
+            // Top attackers
+            if (data.top_attackers && data.top_attackers.length > 0) {
+                let html = '<ul style="list-style:none;padding:0;">';
+                data.top_attackers.forEach((a, i) => {
+                    html += `<li style="padding:8px;border-bottom:1px solid #333;display:flex;justify-content:space-between;">
+                        <span>${i+1}. ${a.ip}</span>
+                        <span style="color:#ff6384;font-weight:bold;">${a.count} attacks</span>
+                    </li>`;
+                });
+                html += '</ul>';
+                document.getElementById('topAttackers').innerHTML = html;
+            }
+        });
+}
 
-// Network Scanner
+// Scanner
 document.getElementById('scanBtn').addEventListener('click', function() {
     const target = document.getElementById('scanTarget').value;
     const results = document.getElementById('scanResults');
     
-    results.innerHTML = '<p class="loading">Scanning... Please wait</p>';
+    results.innerHTML = '<p style="color:#36a2eb;">Scanning...</p>';
     this.disabled = true;
     
     fetch('/api/scan_network', {
@@ -143,84 +167,33 @@ document.getElementById('scanBtn').addEventListener('click', function() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target: target })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if (data.status === 'success') {
-            displayScanResults(data.results);
+        if (data.status === 'success' && data.results) {
+            let html = `<h4>Host: ${data.results.host || target}</h4>`;
+            if (data.results.open_ports && data.results.open_ports.length > 0) {
+                html += '<ul style="list-style:none;padding:0;">';
+                data.results.open_ports.forEach(p => {
+                    html += `<li style="padding:5px;color:#4bc0c0;">✓ Port ${p.port} (${p.service}) - OPEN</li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p>No open ports found</p>';
+            }
+            results.innerHTML = html;
         } else {
-            results.innerHTML = `<p class="error">Error: ${data.message}</p>`;
+            results.innerHTML = `<p style="color:#ff6384;">Error: ${data.message || 'Scan failed'}</p>`;
         }
         this.disabled = false;
     })
-    .catch(error => {
-        results.innerHTML = `<p class="error">Scan failed: ${error}</p>`;
+    .catch(e => {
+        results.innerHTML = `<p style="color:#ff6384;">Error: ${e}</p>`;
         this.disabled = false;
     });
 });
 
-function displayScanResults(results) {
-    const container = document.getElementById('scanResults');
-    let html = '<div class="scan-result">';
-    
-    if (results.open_ports) {
-        html += `<h4>Host: ${results.host}</h4>`;
-        if (results.open_ports.length > 0) {
-            html += '<ul>';
-            results.open_ports.forEach(port => {
-                html += `<li>Port ${port.port} (${port.service}) - <span class="open">OPEN</span></li>`;
-            });
-            html += '</ul>';
-        } else {
-            html += '<p>No open ports found</p>';
-        }
-    }
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-// Load statistics
-function loadStats() {
-    fetch('/api/stats')
-        .then(response => response.json())
-        .then(data => {
-            // Update charts with real data
-            updateChartsWithData(data);
-        });
-}
-
-function updateChartsWithData(data) {
-    // Update based on recent attacks
-    if (data.recent_attacks && data.recent_attacks.length > 0) {
-        const portCounts = {};
-        const typeCounts = {};
-        
-        data.recent_attacks.forEach(attack => {
-            portCounts[attack.target_port] = (portCounts[attack.target_port] || 0) + 1;
-            typeCounts[attack.type] = (typeCounts[attack.type] || 0) + 1;
-        });
-        
-        // Update port chart
-        const ports = Object.keys(portCounts);
-        const portData = Object.values(portCounts);
-        if (ports.length > 0) {
-            portChart.data.labels = ports;
-            portChart.data.datasets[0].data = portData;
-            portChart.update();
-        }
-        
-        // Update type chart
-        typeChart.data.datasets[0].data = [
-            typeCounts['connection_attempt'] || 0,
-            typeCounts['port_scan'] || 0,
-            typeCounts['other'] || 0
-        ];
-        typeChart.update();
-    }
-}
-
-// Load stats every 5 seconds
-setInterval(loadStats, 5000);
-loadStats();
+// Load every 5 seconds
+loadAnalytics();
+setInterval(loadAnalytics, 5000);
 </script>
 {% endblock %}

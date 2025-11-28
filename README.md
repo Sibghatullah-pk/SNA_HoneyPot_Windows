@@ -6,6 +6,20 @@ A comprehensive security monitoring and honeypot system for detecting and analyz
 
 A security monitoring and honeypot system that detects, logs, and analyzes network attacks in real-time. It simulates vulnerable services to attract attackers and study their behavior, providing insights into cyber threat patterns and attack methodologies.
 
+## Attack
+# SSH probe
+echo "root:password" | nc 127.0.0.1 2222
+
+# Telnet probe  
+echo "admin" | nc 127.0.0.1 2323
+
+# HTTP request to honeypot
+curl http://127.0.0.1:8000
+
+# Trap endpoint (high severity!)
+curl http://127.0.0.1:5000/admin
+curl http://127.0.0.1:5000/.env
+
 ## Features
 
 - **Real-time Attack Detection**: Monitor incoming connection attempts and port scans

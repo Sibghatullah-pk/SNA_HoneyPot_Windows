@@ -12,7 +12,40 @@
         <div class="controls">
             <button id="startBtn" class="btn btn-success">Start Honeypot</button>
             <button id="stopBtn" class="btn btn-danger">Stop Honeypot</button>
+            <button id="clearBtn" class="btn btn-warning" style="background:#ff9800;">Clear Stats</button>
             <span id="status" class="status-badge">Stopped</span>
+        </div>
+    </div>
+    
+    <!-- Team Attack Info -->
+    <div class="attack-info-panel" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #00d9ff; border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h3 style="color: #00d9ff; margin-bottom: 15px;">🎯 Team Attack Guide</h3>
+        <div id="attackInfo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <h4 style="color: #4fc3f7;">Target IP Address:</h4>
+                <p id="targetIP" style="font-size: 24px; color: #00ff88; font-family: monospace;">Loading...</p>
+            </div>
+            <div>
+                <h4 style="color: #4fc3f7;">Ports to Attack:</h4>
+                <div id="portsList" style="font-family: monospace; color: #e0e0e0; font-size: 14px;">
+                    <span style="color:#ff6b6b">2222</span>(SSH) | 
+                    <span style="color:#feca57">2323</span>(Telnet) | 
+                    <span style="color:#48dbfb">8000</span>(HTTP) | 
+                    <span style="color:#1dd1a1">8443</span>(HTTPS) | 
+                    <span style="color:#ff9ff3">33060</span>(MySQL) | 
+                    <span style="color:#54a0ff">8080</span>(Proxy) |
+                    <span style="color:#5f27cd">2121</span>(FTP)
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;">
+            <h4 style="color: #4fc3f7; margin-bottom: 10px;">Quick Attack Commands:</h4>
+            <code id="attackCommands" style="color: #00ff88; font-size: 12px; display: block; white-space: pre-wrap;">
+nmap -sV -p 2222,2323,8000,8443,33060,8080,2121 &lt;TARGET_IP&gt;
+telnet &lt;TARGET_IP&gt; 2323
+curl http://&lt;TARGET_IP&gt;:8000
+ssh root@&lt;TARGET_IP&gt; -p 2222
+nc &lt;TARGET_IP&gt; 2222</code>
         </div>
     </div>
 
