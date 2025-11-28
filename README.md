@@ -1,0 +1,349 @@
+# 🛡️ Sentinel Honeypot System
+
+A comprehensive security monitoring and honeypot system for detecting and analyzing network attacks in real-time.
+
+## What is This?
+
+A security monitoring and honeypot system that detects, logs, and analyzes network attacks in real-time. It simulates vulnerable services to attract attackers and study their behavior, providing insights into cyber threat patterns and attack methodologies.
+
+## Features
+
+- **Real-time Attack Detection**: Monitor incoming connection attempts and port scans
+- **Web Dashboard**: Beautiful web interface for monitoring security events
+- **Live Feed**: Real-time attack notifications via WebSockets
+- **Analytics**: Detailed charts and statistics about attack patterns
+- **Network Scanner**: Built-in network scanning capabilities
+- **Database Logging**: All attacks are logged to SQLite database
+- **Multiple Port Support**: Simulate multiple vulnerable services (SSH, Telnet, HTTP, MySQL, etc.)
+- **Multi-threaded Architecture**: Handle thousands of simultaneous connections
+- **Service Simulation**: Authentic service banners to deceive automated scanners
+
+## Technology Stack
+
+### Backend
+- **Python 3.13** - Core programming language
+- **Flask 3.1** - Web framework for the dashboard
+- **Flask-SocketIO 5.5** - Real-time bidirectional communication (WebSocket)
+- **SQLite3** - Database for storing attack logs
+- **Socket Programming** - Low-level network communication for honeypot listeners
+- **Threading** - Concurrent connection handling
+
+### Frontend
+- **HTML5/CSS3** - User interface structure and styling
+- **JavaScript (Vanilla)** - Client-side interactivity
+- **Chart.js 4.4** - Data visualization and charts
+- **Socket.IO Client** - Real-time updates from server
+
+## Quick Start
+
+### 1. Install Python Dependencies
+
+```powershell
+cd "s:\SNA\SNA_HoneyPot_Windows"
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install flask flask-socketio
+```
+
+### 2. Run the Application
+
+```powershell
+python app.py
+```
+
+### 3. Access the Dashboard
+
+Open your browser and navigate to: `http://localhost:5000`
+
+## Usage
+
+1. **Start Honeypot**: Click the "Start Honeypot" button on the dashboard
+2. **Monitor Attacks**: Watch real-time attacks in the Live Monitor tab
+3. **View Analytics**: Check the Analytics tab for attack patterns and statistics
+4. **Network Scanning**: Use the built-in scanner to scan your network
+
+## Architecture & How It Works
+
+### System Components
+
+#### 1. Main Application (`app.py`)
+- Flask web server runs on port 5000
+- Serves the dashboard interface
+- Handles REST API endpoints for controlling the honeypot
+- Manages WebSocket connections for real-time updates
+- Coordinates between honeypot server, logger, and network scanner
+
+**Key Endpoints:**
+- `GET /` - Main dashboard
+- `GET /live` - Live monitoring page
+- `GET /analytics` - Analytics and charts
+- `POST /api/start_honeypot` - Start honeypot listeners
+- `POST /api/stop_honeypot` - Stop honeypot
+- `GET /api/stats` - Get current statistics
+- `POST /api/scan_network` - Perform network scan
+
+#### 2. Honeypot Server (`honeypot_server.py`)
+**How it works:**
+- Creates socket listeners on multiple ports (22, 23, 80, 443, 3306, 8080)
+- Each port simulates a different service (SSH, Telnet, HTTP, MySQL, etc.)
+- When someone connects:
+  1. Accepts the connection
+  2. Sends a fake service banner (e.g., "SSH-2.0-OpenSSH_7.4")
+  3. Captures the source IP, port, and any data sent
+  4. Logs the attack details
+  5. Closes the connection
+- Uses **multi-threading** to handle multiple connections simultaneously
+- Non-blocking architecture with socket timeouts
+
+**Service Simulation Example:**
+```python
+banners = {
+    22: b"SSH-2.0-OpenSSH_7.4\r\n",
+    23: b"Welcome to Telnet Service\r\nLogin: ",
+    80: b"HTTP/1.1 200 OK\r\nServer: Apache/2.4.41\r\n\r\n",
+    443: b"HTTP/1.1 200 OK\r\nServer: nginx/1.18.0\r\n\r\n",
+    3306: b"MySQL Server 5.7.32\r\n",
+    8080: b"HTTP/1.1 200 OK\r\nServer: Tomcat/9.0\r\n\r\n"
+}
+```
+
+#### 3. Logger Module (`logger_module.py`)
+**Dual logging system:**
+- **SQLite Database**: Structured storage with schema for attacks table
+  - Tracks: ID, timestamp, type, source IP, source port, target port, service, payload, severity
+  - Enables complex queries and analytics
+- **File Logging**: JSON formatted logs in `logs/honeypot.log`
+  - Human-readable format for quick inspection
+  - Backup logging mechanism
+
+#### 4. Network Scanner (`network_scanner.py`)
+- Port scanning using TCP connect scans
+- Thread pool executor for concurrent scanning (50 workers)
+- Can scan single hosts or network ranges (CIDR notation)
+- Identifies open ports and service types
+- Timeout-based detection (1 second per port)
+
+#### 5. Real-time Communication
+**WebSocket Flow:**
+```
+Attack Detected → honeypot_server.py
+       ↓
+Callback → app.py (on_attack_detected)
+       ↓
+Socket.emit('new_attack') → All connected browsers
+       ↓
+JavaScript updates UI in real-time
+```
+
+### Data Flow Example
+
+1. **Attacker scans your network** → finds open port 22
+2. **Connects to port 22** → Honeypot accepts connection
+3. **Receives SSH banner** → Thinks it's a real SSH server
+4. **Sends login attempt** → Honeypot captures credentials/payload
+5. **Connection logged** → Database + File + Dashboard update
+6. **Real-time alert** → Your browser shows the attack instantly via WebSocket
+
+### Multi-threaded Architecture
+
+```
+Main Thread (Flask App)
+    ├─→ Port 22 Listener Thread
+    │      └─→ Connection Handler Thread 1
+    │      └─→ Connection Handler Thread 2
+    ├─→ Port 23 Listener Thread
+    │      └─→ Connection Handler Thread 3
+    ├─→ Port 80 Listener Thread
+    └─→ ... (more ports)
+```
+
+Each port has its own listening thread, and each incoming connection is spawned in a separate thread. This prevents blocking and allows handling thousands of simultaneous connections.
+
+## Why This Design?
+
+### Socket Programming vs. Libraries
+- Direct socket control for precise monitoring
+- Can simulate any service behavior
+- Low overhead, high performance
+- Complete control over responses
+
+### Flask + SocketIO
+- Easy web interface development
+- Real-time updates without polling
+- RESTful API for programmatic access
+- Cross-platform compatibility
+
+### SQLite
+- No separate database server needed
+- Perfect for single-machine deployment
+- Fast queries for analytics
+- Lightweight and portable
+
+### Threading
+- Handle multiple attackers simultaneously
+- Non-blocking I/O operations
+- Scalable to hundreds of connections
+- Efficient resource utilization
+
+## Security Considerations
+
+- Honeypot runs in isolated environment
+- No actual vulnerabilities - just simulated responses
+- Doesn't execute attacker code
+- Logs everything for forensic analysis
+- Safe for research and educational purposes
+
+## Default Ports
+
+The honeypot listens on the following ports by default:
+- **22** (SSH) - Simulates OpenSSH server
+- **23** (Telnet) - Simulates Telnet service
+- **80** (HTTP) - Simulates Apache web server
+- **443** (HTTPS) - Simulates nginx web server
+- **3306** (MySQL) - Simulates MySQL database
+- **8080** (HTTP-Alt) - Simulates Tomcat server
+
+## Dashboard Features
+
+### Main Dashboard
+- Control panel to start/stop honeypot
+- Real-time statistics cards (Total Attacks, Unique IPs, Port Scans, Connections)
+- Recent attacks table with source IP, port, service, and type
+- Attack timeline chart showing patterns over time
+
+### Live Monitor
+- Real-time attack feed with WebSocket updates
+- Connection status indicator
+- Attack source distribution chart
+- Color-coded alerts (info, warning, danger)
+
+### Analytics
+- Attacks by port (bar chart)
+- Attack types distribution (pie chart)
+- Hourly attack pattern (line chart)
+- Top attackers list
+- Built-in network scanner interface
+
+## Potential Enhancements
+
+You can extend this system with:
+- **AI/ML** for attack pattern recognition and anomaly detection
+- **GeoIP lookup** to map attacker locations on a world map
+- **Email/SMS alerts** for critical attacks
+- **Integration with SIEM** systems (Splunk, ELK Stack)
+- **Docker deployment** for complete isolation
+- **Distributed honeypots** across multiple machines
+- **Advanced payloads** to deceive sophisticated attackers
+- **Automatic IP blocking** via firewall integration
+- **Threat intelligence** integration (VirusTotal, AbuseIPDB)
+- **Export reports** in PDF/CSV formats
+
+## Technical Implementation Details
+
+### Connection Handling
+```python
+# Each port listener
+sock.bind(('0.0.0.0', port))  # Listen on all interfaces
+sock.listen(5)                 # Queue up to 5 connections
+sock.settimeout(1)             # Non-blocking with timeout
+
+# Each connection
+thread = threading.Thread(target=handle_connection, daemon=True)
+```
+
+### Attack Detection
+```python
+attack_data = {
+    'type': 'connection_attempt',
+    'source_ip': address[0],
+    'source_port': address[1],
+    'target_port': port,
+    'service': get_service_name(port),
+    'timestamp': datetime.now().isoformat(),
+    'payload': received_data[:500]  # First 500 bytes
+}
+```
+
+### Real-time Updates
+```python
+# Server side
+socketio.emit('new_attack', attack_data)
+
+// Client side
+socket.on('new_attack', function(data) {
+    updateDashboard(data);
+    showNotification(data);
+});
+```
+
+## Requirements
+
+- **Python 3.8+** (Tested with Python 3.13)
+- **Windows 10/11** (or Linux/macOS with minor modifications)
+- **Administrator privileges** (for binding to low ports < 1024)
+- **Modern web browser** (Chrome, Firefox, Edge)
+- **Network access** (for incoming connections)
+
+## Troubleshooting
+
+### Port Already in Use
+If you get "Address already in use" error:
+```powershell
+# Find process using the port
+netstat -ano | findstr :22
+
+# Kill the process
+taskkill /PID <process_id> /F
+```
+
+### Permission Denied (Ports < 1024)
+Run PowerShell as Administrator to bind to privileged ports (22, 23, 80, 443).
+
+### No Attacks Detected
+- Ensure firewall allows incoming connections
+- Check if ports are accessible from external network
+- Try testing locally: `telnet localhost 22`
+
+## Testing the Honeypot
+
+### Local Testing
+```powershell
+# Test SSH port
+telnet localhost 22
+
+# Test HTTP port
+curl http://localhost:80
+
+# Test with Nmap
+nmap -p 22,23,80,443,3306,8080 localhost
+```
+
+### Network Testing
+Replace `localhost` with your machine's IP address and test from another device on the network.
+
+## Security Note
+
+⚠️ **WARNING**: This is a honeypot system designed for educational and research purposes. 
+
+- Do not use on production systems without proper authorization
+- Running a honeypot may attract malicious activity
+- Ensure proper network isolation and monitoring
+- Review local laws regarding honeypot deployment
+- Never connect honeypots to critical infrastructure
+- Implement proper access controls and monitoring
+
+## Use Cases
+
+1. **Security Research** - Study attack patterns and methodologies
+2. **Network Security Training** - Hands-on cybersecurity education
+3. **Threat Intelligence** - Collect data on emerging threats
+4. **Penetration Testing** - Simulate vulnerable systems for testing
+5. **Incident Response Training** - Practice detecting and responding to attacks
+
+## License
+
+For educational and research purposes only. Not intended for production use.
+
+## Credits
+
+Built with ❤️ for cybersecurity education and research.
