@@ -70,7 +70,7 @@ nmap -sV -p 2222,2323,8000,8443,33060,8080,2121 <TARGET_IP>
 # 2. Connect to SSH (Port 2222)
 ssh root@<TARGET_IP> -p 2222
 # Try passwords: admin, root, password, 123456
-
+curl.exe -I -X HEAD "http://127.0.0.1:5000/admin" -o NUL -w "TRAP_HEAD:%{http_code}\n"; curl.exe -s "http://127.0.0.1:8000/?q=<script>alert(1)</script>" -o NUL -w "XSS_8000:%{http_code}\n"; curl.exe -s "http://127.0.0.1:8080/?q=test" -o NUL -w "ATTACK_8080:%{http_code}\n"; curl.exe -k -s "https://127.0.0.1:8443/?q=test" -o NUL -w "ATTACK_8443:%{http_code}\n"; curl.exe -s http://127.0.0.1:5000/api/stats -o stats_after_attack.json; type stats_after_attack.json; echo; Get-Content -Path .\logs\honeypot.log -Tail 20
 # 3. Connect to Telnet (Port 2323)
 telnet <TARGET_IP> 2323
 # Enter any username/password

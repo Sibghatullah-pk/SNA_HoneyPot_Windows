@@ -126,3 +126,30 @@ function updateSourceChart(attack) {
 }
 </script>
 {% endblock %}
+
+<script>
+// Inline fallback: populate live feed and source chart from /api/stats
+(function(){
+    function addItem(a){
+        const feed = document.getElementById('liveFeed');
+        if(!feed) return;
+        const item = document.createElement('div');
+        item.className='feed-item alert';
+        const timestamp = new Date(a.timestamp||Date.now()).toLocaleTimeString();
+        item.innerHTML = `<span class="timestamp">${timestamp}</span> <span class="source">${a.source_ip||'unknown'}:${a.source_port||'N/A'}</span> <span class="arrow">→</span> <span class="target">Port ${a.target_port||''}</span> <span class="service">${a.service||''}</span> <span class="badge">${a.type||''}</span>`;
+        feed.insertBefore(item, feed.firstChild);
+    }
+    function render(data){
+        if(!data) return;
+        // clear default info
+        const feed=document.getElementById('liveFeed'); if(feed) feed.innerHTML='';
+        (data.recent_attacks||[]).slice().reverse().forEach(a=>addItem(a));
+        // populate source chart via existing function
+        (data.recent_attacks||[]).forEach(u=>{
+            try{ updateSourceChart(u); }catch(e){}
+        });
+    }
+    fetch('/api/stats').then(r=>r.json()).then(render).catch(e=>console.warn('live fallback failed',e));
+    setInterval(()=>fetch('/api/stats').then(r=>r.json()).then(render).catch(e=>{}),5000);
+})();
+</script>

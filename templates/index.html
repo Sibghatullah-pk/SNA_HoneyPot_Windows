@@ -173,4 +173,58 @@ function fallbackClear(){
 }
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=2"></script>
+<script>
+// Inline fallback renderer: ensures data appears even if dashboard.js fails
+(function(){
+    function buildRows(recent) {
+        if(!recent || recent.length===0) return '<tr><td colspan="5" class="no-data" data-label="Info">No attacks detected yet</td></tr>';
+        return recent.slice().reverse().map(a=>{
+            const t = a.timestamp || a.time || '';
+            return `<tr>`+
+                `<td data-label="Time">${t}</td>`+
+                `<td data-label="Source IP"><span class="ip-text">${a.source_ip||'Unknown'}</span> <button class="copy-btn" data-clip="${a.source_ip||''}">Copy</button></td>`+
+                `<td data-label="Target Port">${a.target_port||'N/A'}</td>`+
+                `<td data-label="Service">${a.service||'Unknown'}</td>`+
+                `<td data-label="Type"><span class="badge ${a.type||''}">${a.type||'Unknown'}</span></td>`+
+            `</tr>`;
+        }).join('');
+    }
+
+    function renderStats(data){
+        try{
+            document.getElementById('totalAttacks').textContent = data.total_attacks || 0;
+            document.getElementById('uniqueIps').textContent = data.unique_ips || 0;
+            document.getElementById('portScans').textContent = data.port_scans || 0;
+            document.getElementById('connections').textContent = data.connection_attempts || 0;
+
+            const tbody = document.getElementById('attacksBody');
+            tbody.innerHTML = buildRows(data.recent_attacks || []);
+
+            // attach simple copy handlers
+            tbody.querySelectorAll('.copy-btn[data-clip]').forEach(b=>{
+                b.addEventListener('click', ()=>{ navigator.clipboard.writeText(b.getAttribute('data-clip')||''); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy',900); });
+            });
+
+            // populate chart
+            try{
+                const recent = (data.recent_attacks||[]).slice().reverse();
+                const labels = recent.map(a=>{ try{ return new Date(a.timestamp).toLocaleTimeString(); }catch(e){ return a.timestamp||''; }}).slice(-20);
+                const values = recent.map((_,i)=>i+1).slice(-20);
+                if(window.attackChart && attackChart.data){
+                    attackChart.data.labels = labels;
+                    attackChart.data.datasets[0].data = values;
+                    attackChart.update();
+                } else if(typeof Chart !== 'undefined'){
+                    const ctx = document.getElementById('attackChart').getContext('2d');
+                    window.__fallbackAttackChart = new Chart(ctx, { type:'line', data:{ labels: labels, datasets:[{ label:'Attacks Over Time', data: values, borderColor:'#00d9ff', tension:0.3, fill:false }] }, options:{ responsive:true, maintainAspectRatio:false } });
+                }
+            }catch(e){console.warn('chart render failed',e)}
+        }catch(e){console.warn('renderStats error',e)}
+    }
+
+    function refresh(){ fetch('/api/stats').then(r=>r.json()).then(renderStats).catch(e=>console.warn('stats fetch failed',e)); }
+    refresh();
+    setInterval(refresh,5000);
+})();
+</script>
 {% endblock %}
