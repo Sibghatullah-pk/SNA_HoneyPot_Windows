@@ -1,0 +1,89 @@
+{
+  "attacks_by_port": {
+    "5000": 2,
+    "8000": 8
+  },
+  "attacks_by_severity": {
+    "high": 7,
+    "medium": 3
+  },
+  "attacks_by_type": {
+    "command_injection": 5,
+    "trap_access": 2,
+    "xss_attempt": 3
+  },
+  "connection_attempts": 2,
+  "hourly_attacks": {
+    "13": 6,
+    "14": 1,
+    "15": 3
+  },
+  "pending_alerts": 7,
+  "port_scans": 0,
+  "recent_attacks": [
+    {
+      "connection_id": 0,
+      "payload": "Path: /admin, Method: HEAD",
+      "service": "HTTP-Trap",
+      "severity": "high",
+      "source_ip": "127.0.0.1",
+      "source_port": 0,
+      "target_port": 5000,
+      "timestamp": "2025-12-28T14:16:49.921698",
+      "type": "trap_access",
+      "user_agent": "curl/8.13.0"
+    },
+    {
+      "connection_id": 1,
+      "payload": "HEAD / HTTP/1.1\r\nHost: 127.0.0.1:8000\r\nUser-Agent: curl/8.13.0\r\nAccept: */*\r\n\r\n",
+      "payload_size": 79,
+      "service": "HTTP",
+      "severity": "medium",
+      "simulated_port": 80,
+      "source_ip": "127.0.0.1",
+      "source_port": 53915,
+      "target_port": 8000,
+      "timestamp": "2025-12-28 15:01:49",
+      "type": "command_injection",
+      "user_agent": "curl/8.13.0"
+    },
+    {
+      "connection_id": 2,
+      "payload": "GET /?q=<script>alert(1)</script> HTTP/1.1\r\nHost: 127.0.0.1:8000\r\nUser-Agent: curl/8.13.0\r\nAccept: */*\r\n\r\n",
+      "payload_size": 106,
+      "service": "HTTP",
+      "severity": "high",
+      "simulated_port": 80,
+      "source_ip": "127.0.0.1",
+      "source_port": 53933,
+      "target_port": 8000,
+      "timestamp": "2025-12-28 15:02:30",
+      "type": "xss_attempt",
+      "user_agent": "curl/8.13.0"
+    },
+    {
+      "connection_id": 0,
+      "payload": "Path: /admin, Method: HEAD",
+      "service": "HTTP-Trap",
+      "severity": "high",
+      "source_ip": "127.0.0.1",
+      "source_port": 0,
+      "target_port": 5000,
+      "timestamp": "2025-12-28T15:34:54.895699",
+      "type": "trap_access",
+      "user_agent": "curl/8.13.0"
+    }
+  ],
+  "top_attackers": [
+    {
+      "count": 6,
+      "ip": "192.168.100.9"
+    },
+    {
+      "count": 4,
+      "ip": "127.0.0.1"
+    }
+  ],
+  "total_attacks": 10,
+  "unique_ips": 2
+}

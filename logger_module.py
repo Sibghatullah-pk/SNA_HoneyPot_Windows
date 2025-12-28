@@ -7,6 +7,8 @@ import sqlite3
 from datetime import datetime, timedelta
 import os
 import threading
+import urllib.request
+import urllib.parse
 
 
 class HoneypotLogger:
@@ -66,7 +68,11 @@ class HoneypotLogger:
                 first_seen TEXT NOT NULL,
                 last_seen TEXT NOT NULL,
                 total_attacks INTEGER DEFAULT 1,
-                threat_level TEXT DEFAULT 'low'
+                threat_level TEXT DEFAULT 'low',
+                asn TEXT,
+                org TEXT,
+                country TEXT,
+                is_vpn INTEGER DEFAULT 0
             )
         ''')
         
@@ -88,6 +94,19 @@ class HoneypotLogger:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_attacks_timestamp ON attacks(timestamp)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_attacks_source_ip ON attacks(source_ip)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_attacks_severity ON attacks(severity)')
+        # Ensure attack enrichment columns exist (for older DBs)
+        try:
+            cols = [c[1] for c in cursor.execute("PRAGMA table_info(attacks)").fetchall()]
+            if 'asn' not in cols:
+                cursor.execute('ALTER TABLE attacks ADD COLUMN asn TEXT')
+            if 'org' not in cols:
+                cursor.execute('ALTER TABLE attacks ADD COLUMN org TEXT')
+            if 'country' not in cols:
+                cursor.execute('ALTER TABLE attacks ADD COLUMN country TEXT')
+            if 'is_vpn' not in cols:
+                cursor.execute('ALTER TABLE attacks ADD COLUMN is_vpn INTEGER DEFAULT 0')
+        except Exception:
+            pass
         
         conn.commit()
         conn.close()
@@ -129,6 +148,20 @@ class HoneypotLogger:
                 ))
                 
                 attack_id = cursor.lastrowid
+
+                # Enrich IP information (ASN, org, country, vpn guess)
+                try:
+                    enrich = self._enrich_ip(source_ip)
+                    if enrich:
+                        cursor.execute('''
+                            UPDATE attacks SET asn = ?, org = ?, country = ?, is_vpn = ? WHERE id = ?
+                        ''', (enrich.get('asn'), enrich.get('org'), enrich.get('country'), 1 if enrich.get('is_vpn') else 0, attack_id))
+                        # Update ip_tracking with enrichment
+                        cursor.execute('''
+                            UPDATE ip_tracking SET asn = ?, org = ?, country = ?, is_vpn = ? WHERE ip_address = ?
+                        ''', (enrich.get('asn'), enrich.get('org'), enrich.get('country'), 1 if enrich.get('is_vpn') else 0, source_ip))
+                except Exception as e:
+                    print(f"[!] Enrichment error: {e}")
                 
                 # Update IP tracking
                 cursor.execute('''
@@ -178,6 +211,45 @@ class HoneypotLogger:
                 f.write(json.dumps(attack_data, default=str) + '\n')
         except Exception as e:
             print(f"[!] File logging error: {e}")
+
+    def _enrich_ip(self, ip):
+        """Perform lightweight IP enrichment using ipinfo.io (no API key required for basic info).
+        Returns dict with keys: asn, org, country, is_vpn
+        """
+        if not ip or ip.startswith('127.'):
+            return None
+        try:
+            token = os.environ.get('IPINFO_TOKEN', '')
+            url = f"https://ipinfo.io/{urllib.parse.quote(ip)}/json"
+            if token:
+                url += f"?token={urllib.parse.quote(token)}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Sentinel/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.load(resp)
+            res = {
+                'asn': None,
+                'org': None,
+                'country': data.get('country'),
+                'is_vpn': False
+            }
+            # ipinfo returns 'org' like 'AS15169 Google LLC' — parse ASN
+            org = data.get('org')
+            if org:
+                res['org'] = org
+                parts = org.split(' ', 1)
+                if parts and parts[0].upper().startswith('AS'):
+                    res['asn'] = parts[0].upper()
+
+            # Basic heuristic for VPN/hosting providers
+            host_providers = ['amazon', 'google', 'digitalocean', 'linode', 'cloudflare', 'ovh', 'aws', 'microsoft', 'hetzner', 'vpn']
+            if res['org']:
+                lower = res['org'].lower()
+                if any(p in lower for p in host_providers):
+                    res['is_vpn'] = True
+
+            return res
+        except Exception:
+            return None
     
     def get_recent_attacks(self, limit=100):
         """Get recent attacks"""
@@ -324,4 +396,30 @@ class HoneypotLogger:
             return True
         except Exception as e:
             print(f"[!] Error clearing data: {e}")
+            return False
+
+    def acknowledge_alert(self, alert_id):
+        """Mark an alert as acknowledged"""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE alerts SET is_acknowledged = 1 WHERE id = ?', (alert_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"[!] Error acknowledging alert: {e}")
+            return False
+
+    def delete_attack(self, attack_id):
+        """Delete an attack record by id"""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM attacks WHERE id = ?', (attack_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"[!] Error deleting attack id {attack_id}: {e}")
             return False

@@ -2,7 +2,7 @@
 Sentinel Honeypot - Main Application
 Complete web dashboard for monitoring network attacks
 """
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, session, redirect, url_for
 from flask_socketio import SocketIO, emit
 from datetime import datetime
 import os
@@ -16,6 +16,8 @@ from network_scanner import NetworkScanner
 # Initialize Flask
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sentinel-honeypot-secret-2025'
+# Admin password (env override recommended)
+app.config['ADMIN_PASSWORD'] = os.environ.get('SENTINEL_ADMIN_PW', 'admin123')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Components
@@ -252,6 +254,78 @@ def get_db_attacks():
     limit = request.args.get('limit', 100, type=int)
     attacks = logger.get_recent_attacks(limit=limit)
     return jsonify({'attacks': attacks, 'count': len(attacks)})
+
+
+# ============== ADMIN PORTAL ==============
+
+
+@app.route('/admin_portal')
+def admin_portal():
+    """Unrestricted admin portal for full visibility"""
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('admin_login'))
+    return render_template('admin.html')
+
+
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    """Simple password form for admin portal"""
+    if request.method == 'POST':
+        data = request.form or {}
+        pw = data.get('password', '')
+        if pw and pw == app.config.get('ADMIN_PASSWORD'):
+            session['admin_authenticated'] = True
+            return redirect(url_for('admin_portal'))
+        else:
+            return render_template('admin_login.html', error='Invalid password')
+    return render_template('admin_login.html')
+
+
+@app.route('/admin_logout')
+def admin_logout():
+    session.pop('admin_authenticated', None)
+    return redirect(url_for('admin_login'))
+
+
+@app.route('/api/admin/ack_alert', methods=['POST'])
+def ack_alert():
+    data = request.json or {}
+    alert_id = data.get('id')
+    if not alert_id:
+        return jsonify({'status': 'error', 'message': 'Missing id'}), 400
+
+    ok = logger.acknowledge_alert(alert_id)
+    if ok:
+        return jsonify({'status': 'success', 'message': 'Alert acknowledged'})
+    return jsonify({'status': 'error', 'message': 'Failed to acknowledge'}), 500
+
+
+@app.route('/api/admin/delete_attack', methods=['POST'])
+def api_delete_attack():
+    data = request.json or {}
+    attack_id = data.get('id')
+    if not attack_id:
+        return jsonify({'status': 'error', 'message': 'Missing id'}), 400
+
+    ok = logger.delete_attack(attack_id)
+    if ok:
+        return jsonify({'status': 'success', 'message': 'Attack deleted'})
+    return jsonify({'status': 'error', 'message': 'Failed to delete attack'}), 500
+
+
+@app.route('/api/admin/logs')
+def admin_logs():
+    """Return last N lines from the JSON log file"""
+    lines = request.args.get('lines', 200, type=int)
+    out = []
+    try:
+        with open(logger.log_file, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+            out = [l.strip() for l in all_lines[-lines:]]
+    except Exception as e:
+        print(f"[!] Error reading logs: {e}")
+    return jsonify({'lines': out})
 
 
 # ============== FAKE TRAP ENDPOINTS ==============

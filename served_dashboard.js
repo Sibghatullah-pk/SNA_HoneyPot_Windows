@@ -288,19 +288,6 @@ function loadStats() {
                 attacksList = data.recent_attacks.slice().reverse(); // most recent first
                 attacksPage = 1;
                 renderAttacksPage(attacksPage);
-
-                // Populate chart from recent attacks (simple timeline)
-                try {
-                    const recent = data.recent_attacks.slice().reverse(); // oldest first
-                    const labels = recent.map(a => {
-                        try { return new Date(a.timestamp).toLocaleTimeString(); } catch (e) { return a.timestamp || ''; }
-                    });
-                    // Build cumulative counts so the chart shows progression
-                    const values = recent.map((_, i) => i + 1);
-                    chartData.labels = labels.slice(-20);
-                    chartData.data = values.slice(-20);
-                    if (attackChart && typeof attackChart.update === 'function') attackChart.update();
-                } catch (e) { console.warn('Chart population failed', e); }
             } else {
                 attacksList = [];
                 renderAttacksPage(1);

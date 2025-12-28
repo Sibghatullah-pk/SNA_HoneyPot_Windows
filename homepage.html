@@ -1,8 +1,35 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sentinel Honeypot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="shield-icon">🛡️</span>
+                <h1>SENTINEL</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Dashboard</a></li>
+                <li><a href="/live" class="">Live Monitor</a></li>
+                <li><a href="/analytics" class="">Analytics</a></li>
+                <li><a href="/admin_portal" class="">Admin</a></li>
+            </ul>
+            <div style="display:flex;align-items:center;gap:10px">
+                <button id="themeToggle" title="Toggle theme" class="btn" style="padding:.4rem .6rem">🌗</button>
+            </div>
+        </div>
+    </nav>
 
-{% block title %}Dashboard - Sentinel Honeypot{% endblock %}
-
-{% block content %}
+    <main class="container">
+        
 <div class="dashboard">
     <h2>Security Dashboard</h2>
     
@@ -148,9 +175,14 @@ nc &lt;TARGET_IP&gt; 2222</code>
         <canvas id="attackChart"></canvas>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+    </main>
+
+    <footer>
+        <p>Sentinel Honeypot System &copy; 2025 | Security Monitoring & Threat Detection</p>
+    </footer>
+
+    
 <script>
 // Inline fallbacks invoked only when dashboard JS didn't initialize.
 function fallbackStart(){
@@ -172,5 +204,23 @@ function fallbackClear(){
         .then(r=>r.json()).then(d=>alert(d.message||JSON.stringify(d))).catch(e=>alert('Error: '+e));
 }
 </script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=2"></script>
-{% endblock %}
+<script src="/static/js/dashboard.js?v=2"></script>
+
+    <script>
+        // Theme toggle (persists in localStorage)
+        (function(){
+            const key = 'sentinel_theme';
+            const body = document.body;
+            function applyTheme(t){
+                if(t === 'light') body.classList.add('light-theme'); else body.classList.remove('light-theme');
+            }
+            let t = localStorage.getItem(key) || 'dark';
+            applyTheme(t);
+            const btn = document.getElementById('themeToggle');
+            if(btn){ btn.addEventListener('click', ()=>{
+                t = (t==='dark') ? 'light' : 'dark';
+                localStorage.setItem(key, t); applyTheme(t);
+            }) }
+        })();
+    </script>
+</html>

@@ -2,6 +2,7 @@
 
 ## Quick Start (30 Seconds)
 
+& 'S:\SNA\SNA_HoneyPot_Windows\venv\Scripts\python.exe' app.py
 ```powershell
 # 1. Open PowerShell and navigate to project
 cd "S:\SNA\SNA_HoneyPot_Windows"

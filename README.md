@@ -361,3 +361,94 @@ For educational and research purposes only. Not intended for production use.
 ## Credits
 
 Built with ❤️ for cybersecurity education and research.
+
+## Detection Types Implemented
+
+Sentinel includes heuristics and pattern matching to classify common attack vectors and assign severity levels. Current detections include:
+
+- connection_attempt — basic TCP connect to a simulated port (low)
+- brute_force — repeated credential attempts on SSH/Telnet ports (medium)
+- web_scan — repeated or automated HTTP probes (low)
+- sql_injection — detection of SQL keywords and typical payloads in URLs or POST bodies (high)
+- xss_attempt — detection of script tags or suspicious HTML in parameters (high)
+- directory_traversal — use of `..` sequences in paths (high)
+- command_injection — detection of shell metacharacters and common patterns (high)
+- database_probe — connection attempts to MySQL-like ports (medium)
+- trap_access — access of trap endpoints like `/admin`, `/.env`, `/phpmyadmin` (high)
+
+These classifications are produced by the analysis engine and saved in `attacks.type` and `attacks.severity`.
+
+## How to Test Each Attack Vector
+
+Run these commands from another machine on the same network (replace `TARGET` with your honeypot IP, e.g., `192.168.100.9`):
+
+- SSH/Telnet brute-force (simulate multiple attempts):
+  - Attempt simple connection: `nc TARGET 2222` or `telnet TARGET 2323`
+  - Simulate password attempt stream:
+    ```powershell
+    for ($i=0; $i -lt 10; $i++) { echo "root:password$i" | nc TARGET 2222 }
+    ```
+
+- SQL Injection (HTTP):
+  ```bash
+  curl "http://TARGET:8000/?id=1' OR '1'='1"
+  ```
+
+- Cross-Site Scripting (XSS):
+  ```bash
+  curl "http://TARGET:8000/?q=<script>alert(1)</script>"
+  ```
+
+- Directory Traversal:
+  ```bash
+  curl "http://TARGET:8000/../../etc/passwd"
+  ```
+
+- Command Injection (HTTP payload):
+  ```bash
+  curl "http://TARGET:8000/?cmd=;cat /etc/passwd"
+  ```
+
+- Port Scanning (Nmap):
+  ```bash
+  nmap -sV -p 2222,2323,8000,8443,33060,8080,2121 TARGET
+  ```
+
+- Trap Endpoints (high severity):
+  ```bash
+  curl http://TARGET:5000/admin
+  curl http://TARGET:5000/.env
+  curl http://TARGET:5000/phpmyadmin
+  ```
+
+After running tests check the admin portal (`/admin_portal`) or tail `logs/honeypot.log` to see entries and severities.
+
+## IP Enrichment & VPN Detection (details)
+
+The logger performs lightweight enrichment via `ipinfo.io` for ASN, organization and country. It uses a small heuristic to mark hosts likely owned by cloud providers or VPN/hosting companies. This helps flag suspicious sources but is not definitive.
+
+To enable improved detection you can:
+
+1. Provide an `IPINFO_TOKEN` environment variable for higher-rate ipinfo access:
+
+```powershell
+setx IPINFO_TOKEN "your_token_here"
+```
+
+2. Integrate MaxMind GeoIP2 by installing `geoip2` and downloading the GeoLite2 database (requires updating `logger_module.py` to use it).
+
+3. Use AbuseIPDB or other reputation services (requires API key) for stronger VPN/proxy detection.
+
+## Auto-blocking (optional)
+
+Auto-blocking is not enabled by default. If you opt in in the future, Sentinel can call Windows PowerShell to add firewall rules for 'critical' IPs. That action requires Administrator privileges and explicit opt-in.
+
+Example PowerShell command (admin):
+
+```powershell
+New-NetFirewallRule -DisplayName "SentinelBlock_<IP>" -Direction Inbound -RemoteAddress <IP> -Action Block
+```
+
+## README Updates
+
+This README includes quick test commands, detection types, enrichment notes, and recommended next steps for production hardening and VPN/proxy detection.
